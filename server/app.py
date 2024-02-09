@@ -3,10 +3,12 @@
 from flask import Flask, jsonify, request, make_response
 from flask_migrate import Migrate
 from flask_restful import Api, Resource
+from flask_cors import CORS
 
 from models import db, Plant
 
 app = Flask(__name__)
+CORS(app, methods=["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"])
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///plants.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.compact = False
@@ -18,6 +20,8 @@ api = Api(app)
 
 
 class Plants(Resource):
+
+    methods = ['GET', 'POST', 'PATCH', 'DELETE']
 
     def get(self):
         plants = [plant.to_dict() for plant in Plant.query.all()]
@@ -36,6 +40,46 @@ class Plants(Resource):
         db.session.commit()
 
         return make_response(new_plant.to_dict(), 201)
+    
+    def patch(self, id):
+        # plant = Plant.query.get(id)
+        # if not plant:
+        #     return make_response('Plant not found', 404)
+        
+        # data = request.get_json()
+        # plant.is_in_stock = data.get('is_in_stock', plant.is_in_stock)
+
+        # db.session.commit()
+
+        # return make_response(plant.to_dict(), 200)
+
+        data = request.get_json()
+        record = Plant.query.filter(Plant.id == id).first()
+        for attr in data:
+            setattr(record, attr, data[attr])
+
+        db.session.add(record)
+        db.session.commit()
+
+        response_dict = record.to_dict()
+
+        response = make_response(
+            response_dict,
+            200
+        )
+
+        return response
+    
+    def delete(self, id):
+        plant = Plant.query.get(id)
+        if not plant:
+            return make_response('Plant not found', 404)
+        
+        db.session.delete(plant)
+        db.session.commit()
+
+        return make_response('', 204)
+
 
 
 api.add_resource(Plants, '/plants')
